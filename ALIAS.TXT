@@ -1,0 +1,261 @@
+
+
+				ALIAS
+			       ver. 1.1
+			   Andrew D. Estes
+			   948 Sunridge Dr.
+			 Sarasota, Fl. 34234
+			    (813) 355-3140
+			Compuserve 73076,2737
+			    March 13, 1988
+
+
+
+			     INTRODUCTION
+
+
+    As I began doing development work under OS/2 I suffered from the
+loss of many of the utilities that I was accustomed to using under
+DOS.  Consequently, my first task was to build OS/2 versions of these
+programs.  This is the first of this set of OS/2 utilities.
+
+    As this is a program that was written for educational purposes as
+well as personal use, the documentation is sparse.  It assumes some
+familiarity with programs such as CED and with OS/2.  This must also
+be considered an experimental program.  It has been tested, but I
+would not consider it to be a production quality program by any means
+This is not to imply that this may be a dangerous program (OS/2 makes
+it very difficult to create a program that can damage the system),
+only that the user interface is weak and that there may be situations
+in which the program does not work exactly as expected. If you should
+find any of the cases, please contact me and I will try to correct
+the situation.
+
+    This is a free program.  I am placing no restrictions on its use
+or distribution.  I do ask that this documentation be attached so
+that users will have a means of contacting me with problems.
+
+
+
+    The ALIAS package consists of three files:
+
+    ALIAS.DOC    - this file.
+    ALIAS.EXE    - the controlling program.
+    ALIAS.DLL    - a dynalink library containing the alias subsystem.
+    KEYSTRIN.ASM - asm source for the keyboard replacement subsystem
+                   and alias functions.
+    ALIAS.C      - source for the alias driver program.
+    ALIAS.DEF    - linker definition file.
+    ALIAS        - make file for the system.
+			    
+
+
+
+			    A FEW DETAILS
+
+
+    ALIAS works by registering a replacement for the KBDSTRINGIN
+function of the KBD subsystem.  This replacement function is
+contained in the ALIAS.DLL file.  When a program calls KBDSTRINGIN,
+the KBD function dispatcher notes that a replacement function has
+been registered and directs the call there rather than to the
+standard function.  This replacement function adds command recall,
+command editing, and alias replacement to the normal KBDSTRINGIN. 
+There are two limitations to this approach.  First, a KBD replacement
+function is only active in the screen group in which it was
+registered.  This means that if you then switch to another screen
+group, you will be using the standard (non-alias) KBDSTRINGIN
+function.  Second, only one replacement function is allowed per
+screen group.  If another process tries to register a new function,
+OS/2 will fail the request.
+
+    Since each session must register ALIAS, I decided that each
+session should have its own recall stack.  This was implemented by
+marking one data segment as nonshared.  Thus you should not expect to
+be able to recall commands from one session while in another.  (In
+future versions, I may allow shared recall).
+
+    On the other hand, I did not want to have to redefine aliases for
+more than one session.  In this case, I defined the segment which
+holds alias/replacement strings to be a shared segment.  If you
+define an alias in session 1, that alias will then be active in
+session 2 (assuming of course, that the ALIAS subsystem is active in
+session 2).
+
+    Since ALIAS is a dynalink library, OS/2 must know where the DLL
+file exists.  When loading a DLL, OS/2 looks along the path defined
+by the LIBPATH variable.  When installing ALIAS, make sure that
+ALIAS.DLL is put somewhere along this path.
+
+
+
+
+		      LOADING AND RUNNING ALIAS
+
+
+    To load ALIAS, simply run ALIAS.EXE with no parameters.  This
+will register the replacement KBDSTRINGIN function for the current
+session (screen group).  If you run ALIAS.EXE a second time with no
+parameters, you will receive an error message reporting that the
+function can not be registered.
+
+    The base ALIAS system allows command recall and editing similar
+to that found in CED.  I tried to follow the keyboard functions
+defined in CED as much as possible.  All commands entered on the
+command line are stored in a circular buffer.  These commands may be
+recalled using the up and down arrow keys.  Command line editing is
+also implemented.  The editing keys include:
+
+   LEFT ARROW  - move the cursor left one character
+   RIGHT ARROW - move the cursor right one character
+   HOME        - move the cursor to the beginning of the line
+   END         - move the cursor to the end of the line
+   CTL-RIGHT   - move the cursor to the start of the next word
+   CTL-LEFT    - move the cursor to the start of the previous word
+   INSERT      - toggle insert mode
+   DELETE      - delete the character at the cursor
+   BACKSPACE   - delete the previous character
+   ESC         - clear current command line
+
+    I also replicated the standard DOS / OS/2 function key template
+editing.  Note that these only work on the last command, not on
+recalled commands.
+
+    Finally, CTL-PAGEUP will clear the recall buffer and CTL-PAGEDOWN
+will remove the current line from the recall buffer.
+
+    Command aliasing takes place when a line begins with a character
+string that has been designated for replacement.  Such a string may
+be recorded as follows:
+
+    ALIAS cv cvp /43
+
+The effect of this line will be that any time the KBDSTRINGIN
+replacement function sees a line that begins with 'cv ...' it will
+expand that line into 'cvp /43 ...' immediately before returning the
+line to the calling program.  You will not see the replacement line
+echoed to the screen; only the function that called KBDSTRINGIN will
+see the expanded line.
+
+    If you wish to record multiple aliases, you may create a file
+containing the alias strings one per line.  To load the file invoke
+ALIAS with a '-f filename':
+
+    ALIAS -f alias.cfg
+
+ALIAS will then read the file alias.cfg and record the alias strings. 
+You may clear the alias string buffer by invoking ALIAS with a '-c'
+parameter:
+
+    ALIAS -c
+
+ALIAS will clear all defined aliases.  If you wish to redefine a
+replacement string, simply enter the replacement as if it were a new
+alias:
+
+    ALIAS cv cvp /s
+
+ALIAS checks each alias entered against all previously registered
+alias strings.  If the source portion matches a defined alias, the
+entire alias replacement string is replaced.  You may undefine an
+alias by simply not having a replacement string:
+
+    ALIAS cv
+
+ALIAS sees that there is no replacement string and clears the 'cv
+...' string from its alias buffer.  Finally, you may list all defined
+alias replacement stings by running ALIAS with a '-l' option:
+
+    ALIAS -l
+
+ALIAS will then list to STDOUT (i.e. it may be redirected) all
+defined alias strings.
+
+
+
+
+			  KNOWN LIMITATIONS
+
+
+    Since the ALIAS.EXE program terminates after registering the
+KBDSTRINGIN replacement function, it is not possible to de-register
+the function (OS/2 only allows the registering process to de-register
+a replacement function).  This means that if you do not wish ALIAS to
+be active, you must shut down the session in which it was loaded and
+start another session without loading it.  As there are not as yet
+many OS/2 programs, it is hard to determine if this is a real
+problem.  I tend to think it is not.  The replacement KBDSTRINGIN
+function will pass control back to the normal KBDSTRINGIN function if
+it does not like the state of the keyboard or if it is called with a
+NOWAIT option.
+
+    As a side effect of the NONSHARED data segment, each process will
+also have its own recall stack.  This is similar to the DOS and
+APPLICATION command stack ideas of CED.
+
+    Control character expansion is not performed.  Thus a tab
+character is NOT expanded; in fact, a tab is simply ignored.  Other
+control characters are displayed using the graphics characters rather
+than the standard ^character form.
+
+    The command recall buffer and the alias buffer are both set at
+2048 characters.  These settings can not be changed.  The command
+recall buffer is a circular buffer; earlier commands are simply
+overwritten.  The alias buffer is simply a list.  If the buffer would
+be overflowed by adding a new alias, the new alias will not be
+accepted and you will receive an error message.
+
+    There is a problem with loading an alias from the OS2INIT.CMD in
+the first session.  Specifically, if you have a line which loads an
+alias, this alias is lost after exit from the CMD file.  Alias
+loading will work in other sessions.
+
+    ALIAS is a purely OS/2 program.  It does not work under DOS or
+the DOS 3.x box.
+
+    ALIAS has only been tested on the Microsoft SDK version of OS/2. 
+It should work on any other versions, but if not please let me know.
+
+
+
+
+		       CHANGES IN THIS VERSION
+
+
+    This version includes the source code.  This was included so
+interested parties could see how a replacement subsystem could be
+written.  
+
+    The 101-key keyboard is now supported.  In the previous version I
+did not properly recall the last command if it were itself a recalled
+command.  This is now fixed.  The backslash character is now
+considered a word delimiter.  This is useful when correcting spelling
+errors in pathnames.
+
+
+
+
+				FUTURE
+
+
+    I think that I shall include a VIOPOPUP window for command
+recall.  It will probably be a few weeks before I have time to do so,
+so if you have any other suggestions that should be implemented,
+please send them along.
+
+
+
+
+			   ACKNOWLEDGEMENTS
+
+
+    It should be obvious that this program was heavily influenced by
+the excellent program CED by Chris Dunford.  CED is one of those
+programs that made working in DOS acceptable.  I only hope that this
+program will be as half as useful.
+
+    ALIAS consists of approximately 2000 lines of assembler code for the
+dynalink library and approximately 200 lines of C code for the driver
+program.  The program was written using the Microsoft OS/2 SDK.
+
+

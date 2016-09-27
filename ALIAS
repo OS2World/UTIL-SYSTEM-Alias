@@ -1,0 +1,10 @@
+COPT=-ALw -G2s -Lp
+
+keystrin.obj: keystrin.asm
+	masm keystrin,keystrin,keystrin.lst;
+
+alias.dll: keystrin.obj alias.def
+	link keystrin,alias.dll,,doscalls.lib,alias.def;
+
+alias.exe: alias.c
+	cl $(COPT) alias.c /link /stack:4000

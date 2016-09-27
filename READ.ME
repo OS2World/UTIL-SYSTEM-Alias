@@ -1,0 +1,19 @@
+Due to the author's gracious provision of source code for ALIAS
+version 1.1, I have added files which make insert mode the default for
+command line editing, a personal preference that some others may
+share.  To make insert mode the default on your system, copy the file
+INSMODE.DLL to LIBPATH as ALIAS.DLL instead of using the ALIAS.DLL in
+this archive.  If you wish to make changes to the "insert mode"
+version, the source for INSMODE.DLL is found in the file INSMODE.ASM,
+which should be renamed to KEYSTRIN.ASM for the make file to work
+correctly.
+
+This version is a slight bug fix over the version contained in
+ALIAS11.ARC: hitting ENTER with the non-default editing state (insert
+or overstrike) left the cursor shape and the editing state out of
+sync.
+
+                                        William M. Miller
+
+                                        BIX: wmiller
+                                        CIS: 72105,1744
